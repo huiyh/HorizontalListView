@@ -120,7 +120,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** Flag used to mark when the adapters data has changed, so the view can be relaid out */
     private boolean mDataChanged = false;
 
-    /** Temporary rectangle to be used for measurements */
+    /**
+     * 用了获取指定Child所在矩形的尺寸
+     *  Temporary rectangle to be used for measurements */
     private Rect mRect = new Rect();
 
     /** Tracks the currently touched view, used to delegate touches to the view being touched */
@@ -851,6 +853,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 
      * Finds a child view that is contained within this view, given the adapter index.
      * @return View The child view, or or null if not found.
      */
@@ -863,6 +866,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 遍历所有的Child,获取他所在的矩形,如果传入的点在矩形中,就返回这个这个Child的index<br/>
      * Returns the index of the child that contains the coordinates given.
      * This is useful to determine which child has been touched.
      * This can be used for a call to {@link #getChildAt(int)}
@@ -884,12 +888,16 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         return -1;
     }
 
-    /** 是否最后一个Item(index == size-1)<br/> Simple convenience method for determining if this index is the last index in the adapter */
+    /** 是否最后一个Item(index == size-1)<br/>
+     *  Simple convenience method for determining if this index is the last index in the adapter
+     * */
     private boolean isLastItemInAdapter(int index) {
         return index == mAdapter.getCount() - 1;
     }
 
-    /** Gets the height in px this view will be rendered. (padding removed) */
+    /**
+     * 高度减去PaddingTop和PaddingBottom
+     *  Gets the height in px this view will be rendered. (padding removed) */
     private int getRenderHeight() {
         return getHeight() - getPaddingTop() - getPaddingBottom();
     }
@@ -938,7 +946,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         }
     }
 
-    /** Draws the dividers that go in between the horizontal list view items */
+    /** 
+     * 没看懂
+     * Draws the dividers that go in between the horizontal list view items */
     private void drawDividers(Canvas canvas) {
         final int count = getChildCount();
 
@@ -946,7 +956,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         final Rect bounds = mRect;
         mRect.top = getPaddingTop();
         mRect.bottom = mRect.top + getRenderHeight();
-
+        //得到的mRect是PaddingTop和PaddingBottom之间的部分.
         // Draw the list dividers
         for (int i = 0; i < count; i++) {
             // Don't draw a divider to the right of the last item in the adapter
@@ -1010,14 +1020,14 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         // Don't dispatch setPressed to our children. We call setPressed on ourselves to
         // get the selector in the right state, but we don't want to press each child.
     }
-
+    /**更新Scroller的数据*/
     protected boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
         mScroller.fling(mNextX, 0, (int) -velocityX, 0, 0, mMaxX, 0, 0);
         setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_FLING);
         requestLayout();
         return true;
     }
-
+    /***/
     protected boolean onDown(MotionEvent e) {
         // If the user just caught a fling, then disable all touch actions until they release their finger
         mBlockTouchAction = !mScroller.isFinished();
