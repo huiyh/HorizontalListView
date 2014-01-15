@@ -136,7 +136,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** The x position of the next to be rendered view */
     protected int mNextX;
 
-    /** Used to hold the scroll position to restore to post rotate */
+    /**
+     * 根据bundle中存储的BUNDLE_ID_CURRENT_X恢复xNextX的值
+     *  Used to hold the scroll position to restore to post rotate 
+     *  */
     private Integer mRestoreX = null;
 
     /** Tracks the maximum possible X position, stays at max value until last item is laid out and it can be determined */
@@ -355,7 +358,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         requestLayout();//重绘
     }
 
-    /**用来处理adapter数据变化的事件 DataSetObserver used to capture adapter data change events */
+    /**用来捕获adapter数据变化的事件 DataSetObserver used to capture adapter data change events */
     private DataSetObserver mAdapterDataObserver = new DataSetObserver() {
         @Override
         public void onChanged() {
@@ -466,7 +469,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             mRemovedViewsCache.get(itemViewType).offer(view);
         }
     }
-
+    /**判断itemviewType是否有效<br/>
+     * 如果在cache的index范围内就有效
+     * 否则无效
+     * */
     private boolean isItemViewTypeValid(int itemViewType) {
         return itemViewType < mRemovedViewsCache.size();
     }
@@ -474,11 +480,12 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** Adds a child to this viewgroup and measures it so it renders the correct size */
     private void addAndMeasureChild(final View child, int viewPos) {
         LayoutParams params = getLayoutParams(child);
-        addViewInLayout(child, viewPos, params, true);
+        addViewInLayout(child, viewPos, params, true);//viewGroup的方法
         measureChild(child);
     }
 
     /**
+     * 获取child的MeasureSpec,然后调用child的measur方法进行测量
      * Measure the provided child.
      *
      * @param child The child.
@@ -497,7 +504,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         child.measure(childWidthSpec, childHeightSpec);
     }
 
-    /** Gets a child's layout parameters, defaults if not available. */
+    /**
+     * 获取child的LayoutParams,如果没有,就返回一个默认的LayoutParams(宽是WRAP_CONTENT,高是MATCH_PARENT)
+     * Gets a child's layout parameters, defaults if not available. 
+     **/
     private ViewGroup.LayoutParams getLayoutParams(View child) {
         ViewGroup.LayoutParams layoutParams = child.getLayoutParams();
         if (layoutParams == null) {
@@ -520,7 +530,8 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         // Force the OS to redraw this view
         invalidate();
 
-        // If the data changed then reset everything and render from scratch at the same offset as last time
+        //如果数据有更新,重置所有参数(除了mCurrentX)
+        //If the data changed then reset everything and render from scratch at the same offset as last time
         if (mDataChanged) {
             int oldCurrentX = mCurrentX;
             initView();
@@ -530,18 +541,21 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         }
 
         // If restoring from a rotation
+        // 如果有已存储的X左边,则采用
         if (mRestoreX != null) {
             mNextX = mRestoreX;
             mRestoreX = null;
         }
 
         // If in a fling
+        // 如果是滑动 使用Scroller设定mNextX
         if (mFlingTracker.computeScrollOffset()) {
             // Compute the next position
             mNextX = mFlingTracker.getCurrX();
         }
 
         // Prevent scrolling past 0 so you can't scroll past the end of the list to the left
+        // 如果滑到左边,则显示左边的Edge
         if (mNextX < 0) {
             mNextX = 0;
 
@@ -552,6 +566,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
             mFlingTracker.forceFinished(true);
             setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
+        // 如果滑到右边,则显示右边的Edge
         } else if (mNextX > mMaxX) {
             // Clip the maximum scroll position at mMaxX so you can't scroll past the end of the list to the right
             mNextX = mMaxX;
@@ -625,7 +640,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         }
     }
 
-    /** Determines the current fling absorb velocity */
+    /**确定当前滑动承受的速度
+     * 用了确定edit显示的范围 
+     * Determines the current fling absorb velocity */
     private float determineFlingAbsorbVelocity() {
         // If the OS version is high enough get the real velocity */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
