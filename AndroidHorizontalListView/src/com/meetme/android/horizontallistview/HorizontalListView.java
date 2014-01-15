@@ -97,8 +97,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** The bundle id of the parents state. Used to restore the parent's state after a rotation occurs */
     private static final String BUNDLE_ID_PARENT_STATE = "BUNDLE_ID_PARENT_STATE";
 
-    /**Scroller<br /> Tracks ongoing flings */
-    protected Scroller mFlingTracker = new Scroller(getContext());
+    /**Scroller<br /> Tracks ongoing flings <br/>
+     * mFlingTracker
+     * */
+    protected Scroller mScroller = new Scroller(getContext());
 
     /** Gesture listener to receive callbacks when gestures are detected */
     private final GestureListener mGestureListener = new GestureListener();
@@ -215,7 +217,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
         // If the OS version is high enough then set the friction on the fling tracker */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            HoneycombPlus.setFriction(mFlingTracker, FLING_FRICTION);
+            HoneycombPlus.setFriction(mScroller, FLING_FRICTION);
         }
     }
 
@@ -477,7 +479,11 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         return itemViewType < mRemovedViewsCache.size();
     }
 
-    /** Adds a child to this viewgroup and measures it so it renders the correct size */
+    /** 
+     *  调用viewGroup的方法,添加一个child,并处使用measureChild()方法对child进行测量<br/>
+     *  Adds a child to this viewgroup and measures it so it renders the correct size 
+     *  
+     *  */
     private void addAndMeasureChild(final View child, int viewPos) {
         LayoutParams params = getLayoutParams(child);
         addViewInLayout(child, viewPos, params, true);//viewGroup的方法
@@ -549,9 +555,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
         // If in a fling
         // 如果是滑动 使用Scroller设定mNextX
-        if (mFlingTracker.computeScrollOffset()) {
+        if (mScroller.computeScrollOffset()) {
             // Compute the next position
-            mNextX = mFlingTracker.getCurrX();
+            mNextX = mScroller.getCurrX();
         }
 
         // Prevent scrolling past 0 so you can't scroll past the end of the list to the left
@@ -564,7 +570,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
                 mEdgeGlowLeft.onAbsorb((int) determineFlingAbsorbVelocity());
             }
 
-            mFlingTracker.forceFinished(true);
+            mScroller.forceFinished(true);
             setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
         // 如果滑到右边,则显示右边的Edge
         } else if (mNextX > mMaxX) {
@@ -576,7 +582,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
                 mEdgeGlowRight.onAbsorb((int) determineFlingAbsorbVelocity());
             }
 
-            mFlingTracker.forceFinished(true);
+            mScroller.forceFinished(true);
             setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
         }
 
@@ -586,7 +592,8 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         fillList(dx);
         positionChildren(dx);
 
-        // Since the view has now been drawn, update our current position
+        // 界面被重绘之后,更新mCurrentX
+        //Since the view has now been drawn, update our current position
         mCurrentX = mNextX;
 
         // If we have scrolled enough to lay out all views, then determine the maximum scroll position now
@@ -597,12 +604,14 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         }
 
         // If the fling has finished
-        if (mFlingTracker.isFinished()) {
+        // 如果滑动结束
+        if (mScroller.isFinished()) {
             // If the fling just ended
             if (mCurrentScrollState == OnScrollStateChangedListener.ScrollState.SCROLL_STATE_FLING) {
                 setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
             }
         } else {
+        	// TODO 如果滑动没有结束,继续动画
             // Still in a fling so schedule the next frame
             ViewCompat.postOnAnimation(this, mDelayedLayout);
         }
@@ -646,7 +655,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     private float determineFlingAbsorbVelocity() {
         // If the OS version is high enough get the real velocity */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            return IceCreamSandwichPlus.getCurrVelocity(mFlingTracker);
+            return IceCreamSandwichPlus.getCurrVelocity(mScroller);
         } else {
             // Unable to get the velocity so just return a default.
             // In actuality this is never used since EdgeEffectCompat does not draw anything unless the device is ICS+.
@@ -703,7 +712,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         return false;
     }
 
-    /** Adds children views to the left and right of the current views until the screen is full */
+    /**
+     * 	向左/右边 添加Child<br/>
+     *  Adds children views to the left and right of the current views until the screen is full 
+     *  */
     private void fillList(final int dx) {
         // Get the rightmost child and determine its right edge
         int edge = 0;
@@ -725,11 +737,16 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         // Add new children views to the left, until past the edge of the screen
         fillListLeft(edge, dx);
     }
-
+    /**
+     * 移除超出左右边界的view,并将其添加到cache中
+     * @author hyh
+     * @param dx 是mCurrentX和mNextX的差值
+     */
     private void removeNonVisibleChildren(final int dx) {
         View child = getLeftmostChild();
 
         // Loop removing the leftmost child, until that child is on the screen
+        // child的最右边加上偏移量 是否超过左侧边界
         while (child != null && child.getRight() + dx <= 0) {
             // The child is being completely removed so remove its width from the display offset and its divider if it has one.
             // To remove add the size of the child and its divider (if it has one) to the offset.
@@ -774,6 +791,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             View child = mAdapter.getView(mRightViewAdapterIndex, getRecycledView(mRightViewAdapterIndex), this);
             addAndMeasureChild(child, INSERT_AT_END_OF_LIST);
 
+            //如果是第0个Item,左边没有Divider,否则加上Divider的尺寸
             // If first view, then no divider to the left of it, otherwise add the space for the divider width
             rightEdge += (mRightViewAdapterIndex == 0 ? 0 : mDividerWidth) + child.getMeasuredWidth();
 
@@ -866,7 +884,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         return -1;
     }
 
-    /** Simple convenience method for determining if this index is the last index in the adapter */
+    /** 是否最后一个Item(index == size-1)<br/> Simple convenience method for determining if this index is the last index in the adapter */
     private boolean isLastItemInAdapter(int index) {
         return index == mAdapter.getCount() - 1;
     }
@@ -883,7 +901,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
     /** Scroll to the provided offset */
     public void scrollTo(int x) {
-        mFlingTracker.startScroll(mNextX, 0, x - mNextX, 0);
+        mScroller.startScroll(mNextX, 0, x - mNextX, 0);
         setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_FLING);
         requestLayout();
     }
@@ -994,7 +1012,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     protected boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-        mFlingTracker.fling(mNextX, 0, (int) -velocityX, 0, 0, mMaxX, 0, 0);
+        mScroller.fling(mNextX, 0, (int) -velocityX, 0, 0, mMaxX, 0, 0);
         setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_FLING);
         requestLayout();
         return true;
@@ -1002,10 +1020,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
     protected boolean onDown(MotionEvent e) {
         // If the user just caught a fling, then disable all touch actions until they release their finger
-        mBlockTouchAction = !mFlingTracker.isFinished();
+        mBlockTouchAction = !mScroller.isFinished();
 
         // Allow a finger down event to catch a fling
-        mFlingTracker.forceFinished(true);
+        mScroller.forceFinished(true);
         setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
 
         unpressTouchedChild();
@@ -1117,7 +1135,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         // Detect when the user lifts their finger off the screen after a touch
         if (event.getAction() == MotionEvent.ACTION_UP) {
             // If not flinging then we are idle now. The user just finished a finger scroll.
-            if (mFlingTracker == null || mFlingTracker.isFinished()) {
+            if (mScroller == null || mScroller.isFinished()) {
                 setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
             }
 
@@ -1268,7 +1286,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         int nextScrollPosition = mCurrentX + scrolledOffset;
 
         // If not currently in a fling (Don't want to allow fling offset updates to cause over scroll animation)
-        if (mFlingTracker == null || mFlingTracker.isFinished()) {
+        if (mScroller == null || mScroller.isFinished()) {
             // If currently scrolled off the left side of the list and the adapter is not empty
             if (nextScrollPosition < 0) {
 
