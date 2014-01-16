@@ -125,13 +125,16 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
      *  Temporary rectangle to be used for measurements */
     private Rect mRect = new Rect();
 
-    /** Tracks the currently touched view, used to delegate touches to the view being touched */
+    /**
+     * 记录当前被按下的child.用来恢复他为未按下状态<br/>
+     *  Tracks the currently touched view, used to delegate touches to the view being touched */
     private View mViewBeingTouched = null;
 
     /** The width of the divider that will be used between list items */
     private int mDividerWidth = 0;
 
-    /** The drawable that will be used as the list divider */
+    /**用了绘制item间的Divider<br/>
+     *  The drawable that will be used as the list divider */
     private Drawable mDivider = null;
 
     /** The x position of the currently rendered view */
@@ -184,11 +187,13 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     private OnScrollStateChangedListener.ScrollState mCurrentScrollState = OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE;
 
     /**
+     * 边缘发光效果
      * Tracks the state of the left edge glow.
      */
     private EdgeEffectCompat mEdgeGlowLeft;
 
     /**
+     * 边缘发光效果
      * Tracks the state of the right edge glow.
      */
     private EdgeEffectCompat mEdgeGlowRight;
@@ -199,7 +204,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /**当一个view被touch时,停止滚动 Used to track if a view touch should be blocked because it stopped a fling */
     private boolean mBlockTouchAction = false;
 
-    /** Used to track if the parent vertically scrollable view has been told to DisallowInterceptTouchEvent */
+    /**
+     * 用于跟踪如果父垂直滚动视图被告知不允许拦截触摸事件<br/>
+     *  Used to track if the parent vertically scrollable view has been told to DisallowInterceptTouchEvent */
     private boolean mIsParentVerticiallyScrollableViewDisallowingInterceptTouchEvent = false;
 
     /**
@@ -238,10 +245,15 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * <li>
      * When this HorizontalListView is embedded within a vertical scrolling view it is important to disable the parent view from interacting with
-     * any touch events while the user is scrolling within this HorizontalListView. This will start at this view and go up the view tree looking
-     * for a vertical scrolling view. If one is found it will enable or disable parent touch interception.
-     *
+     * any touch events while the user is scrolling within this HorizontalListView. 
+     * <li/><li>
+     * 当此Horizo​​ntalListView被嵌入一个垂直滚动视图中,当用户滚动这个Horizo​​ntalListView,禁用父视图与任何触摸事件进行交互是很重要的。
+     * <li/><li>
+     * This will start at this view and go up the view tree looking
+     * for a vertical scrolling view. If one is found it will enable or disable parent touch interception.<li/>
+     * <li>这个方法将开始从这个视图去所在视图树寻找一个垂直滚动视图。如果找到，将启用或禁用父视图的触摸拦截。<li/>
      * @param disallowIntercept If true the parent will be prevented from intercepting child touch events
      */
     private void requestParentListViewToNotInterceptTouchEvents(Boolean disallowIntercept) {
@@ -867,6 +879,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
     /**
      * 遍历所有的Child,获取他所在的矩形,如果传入的点在矩形中,就返回这个这个Child的index<br/>
+     * 也就是说,这个index是Child列表的index,而不是adapter的position
      * Returns the index of the child that contains the coordinates given.
      * This is useful to determine which child has been touched.
      * This can be used for a call to {@link #getChildAt(int)}
@@ -953,44 +966,48 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         final int count = getChildCount();
 
         // Only modify the left and right in the loop, we set the top and bottom here since they are always the same
-        final Rect bounds = mRect;
+        final Rect boundsRect = mRect;
         mRect.top = getPaddingTop();
         mRect.bottom = mRect.top + getRenderHeight();
         //得到的mRect是PaddingTop和PaddingBottom之间的部分.
         // Draw the list dividers
         for (int i = 0; i < count; i++) {
-            // Don't draw a divider to the right of the last item in the adapter
+            //最右侧元素的右侧不要画Divider
+        	//Don't draw a divider to the right of the last item in the adapter
             if (!(i == count - 1 && isLastItemInAdapter(mRightViewAdapterIndex))) {
                 View child = getChildAt(i);
+                //Divider所占据的矩形,是从child右侧开始,宽度是已设定的宽度
+                boundsRect.left = child.getRight();
+                boundsRect.right = child.getRight() + mDividerWidth;
 
-                bounds.left = child.getRight();
-                bounds.right = child.getRight() + mDividerWidth;
-
+                // 不绘制超出屏幕左侧边缘的部分
                 // Clip at the left edge of the screen
-                if (bounds.left < getPaddingLeft()) {
-                    bounds.left = getPaddingLeft();
+                if (boundsRect.left < getPaddingLeft()) {
+                    boundsRect.left = getPaddingLeft();
                 }
 
+                // 不绘制超出屏幕右侧边缘的部分
                 // Clip at the right edge of the screen
-                if (bounds.right > getWidth() - getPaddingRight()) {
-                    bounds.right = getWidth() - getPaddingRight();
+                if (boundsRect.right > getWidth() - getPaddingRight()) {
+                    boundsRect.right = getWidth() - getPaddingRight();
                 }
 
                 // Draw a divider to the right of the child
-                drawDivider(canvas, bounds);
+                drawDivider(canvas, boundsRect);
 
                 // If the first view, determine if a divider should be shown to the left of it.
                 // A divider should be shown if the left side of this view does not fill to the left edge of the screen.
                 if (i == 0 && child.getLeft() > getPaddingLeft()) {
-                    bounds.left = getPaddingLeft();
-                    bounds.right = child.getLeft();
-                    drawDivider(canvas, bounds);
+                    boundsRect.left = getPaddingLeft();
+                    boundsRect.right = child.getLeft();
+                    drawDivider(canvas, boundsRect);
                 }
             }
         }
     }
 
     /**
+     * 关键给定的矩形,绘制Divider
      * Draws a divider in the given bounds.
      *
      * @param canvas The canvas to draw to.
@@ -1020,14 +1037,18 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         // Don't dispatch setPressed to our children. We call setPressed on ourselves to
         // get the selector in the right state, but we don't want to press each child.
     }
-    /**更新Scroller的数据*/
+    /**被GestureListener调用<br/>
+     * 更新mScroller的数据*/
     protected boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
         mScroller.fling(mNextX, 0, (int) -velocityX, 0, 0, mMaxX, 0, 0);
         setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_FLING);
         requestLayout();
         return true;
     }
-    /***/
+    /**
+     * 被GestureListener调用<br/>
+     * 更新mScroller的状态为停止滑动,经上一个被按下的child状态设置为pressed(false),
+     * 将当前被按到的chile状态设为pressed(true)并使用mViewBeingTouched记录*/
     protected boolean onDown(MotionEvent e) {
         // If the user just caught a fling, then disable all touch actions until they release their finger
         mBlockTouchAction = !mScroller.isFinished();
@@ -1056,7 +1077,8 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         return true;
     }
 
-    /** If a view is currently pressed then unpress it */
+    /**如果当前View的状态是pressed,设置它的状态为松开
+     *  If a view is currently pressed then unpress it */
     private void unpressTouchedChild() {
         if (mViewBeingTouched != null) {
             // Set the view as not pressed
@@ -1092,7 +1114,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
             return true;
         }
-
+        /**清除被按下状态,触发onItemClickListener和OnClickListener*/
         @Override
         public boolean onSingleTapConfirmed(MotionEvent e) {
             unpressTouchedChild();
@@ -1100,7 +1122,8 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
             final int index = getChildIndex((int) e.getX(), (int) e.getY());
 
-            // If the tap is inside one of the child views, and we are not blocking touches
+            //得到当前child的adapterIndex,并触发onItemClickListener
+            //If the tap is inside one of the child views, and we are not blocking touches
             if (index >= 0 && !mBlockTouchAction) {
                 View child = getChildAt(index);
                 int adapterIndex = mLeftViewAdapterIndex + index;
@@ -1110,14 +1133,17 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
                     return true;
                 }
             }
-
+            // 触发OnClickListener
             if (mOnClickListener != null && !mBlockTouchAction) {
                 mOnClickListener.onClick(HorizontalListView.this);
             }
 
             return false;
         }
-
+        /**
+         * 首先清除被child被按下状态<br/>
+         * 触发OnItemLongClickListener,并触发对应的触觉反馈
+         * */
         @Override
         public void onLongPress(MotionEvent e) {
             unpressTouchedChild();
@@ -1130,7 +1156,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
                     int adapterIndex = mLeftViewAdapterIndex + index;
                     boolean handled = onItemLongClickListener.onItemLongClick(HorizontalListView.this, child, adapterIndex, mAdapter
                             .getItemId(adapterIndex));
-
+                    //执行触觉反馈
                     if (handled) {
                         // BZZZTT!!1!
                         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -1157,7 +1183,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             unpressTouchedChild();
             releaseEdgeGlow();
 
-            // Allow the user to interact with parent views
+            // 运行父视图的触摸拦截Allow the user to interact with parent views
             requestParentListViewToNotInterceptTouchEvents(false);
         }
 
@@ -1181,10 +1207,14 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
      * has scrolled to the point where only 10 items are left to be rendered off the right of the
      * screen. To get called back at that point just register with this function with a
      * numberOfItemsLeftConsideredLow value of 10. <br>
+     * 设置一个监听器，当HorizontalListView已滚动到它是在数据不足一个点被调用。
+     * 一个示例用例是想自动下载，当用户滚动到其中只有10项是留给被渲染到屏幕右侧的点更多的数据。
+     * 若要叫回来在这一点上只登记使用此功能为10 numberOfItemsLeftConsideredLow值。
      * <br>
      * This will only be called once to notify that the HorizontalListView is running low on data.
      * Calling notifyDataSetChanged on the adapter will allow this to be called again once low on data.
-     *
+     * 这只会被调用一次以通知HorizontalListView上的数据不足。
+     * 在适配器上调用notifyDataSetChanged将使这个监听器在数据不足时被再次被调用低。
      * @param listener The listener to be notified when the number of array adapters items left to
      * be shown is running low.
      *
@@ -1205,6 +1235,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 确认数据不准,并调用数据不足的监听事件
      * Determines if we are low on data and if so will call to notify the listener, if there is one,
      * that we are running low on data.
      */
@@ -1213,7 +1244,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         if (mRunningOutOfDataListener != null && mAdapter != null &&
                 mAdapter.getCount() - (mRightViewAdapterIndex + 1) < mRunningOutOfDataThreshold) {
 
-            // Prevent notification more than once
+            // 防止多次调用 Prevent notification more than once
             if (!mHasNotifiedRunningLowOnData) {
                 mHasNotifiedRunningLowOnData = true;
                 mRunningOutOfDataListener.onRunningOutOfData();
@@ -1222,6 +1253,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 注册点击事件
      * Register a callback to be invoked when the HorizontalListView has been clicked.
      *
      * @param listener The callback that will be invoked.
@@ -1272,6 +1304,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 设置当前的Scroll状态,并触发onScrollStateChanged<br/>
      * Call to set the new scroll state.
      * If it has changed and a listener is registered then it will be notified.
      */
