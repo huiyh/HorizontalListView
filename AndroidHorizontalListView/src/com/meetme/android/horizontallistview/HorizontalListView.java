@@ -40,6 +40,7 @@ import android.os.Parcelable;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.widget.EdgeEffectCompat;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -108,7 +109,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** Used for detecting gestures within this view so they can be handled */
     private GestureDetector mGestureDetector;
 
-    /** This tracks the starting layout position of the leftmost view */
+    /**Child相对Parent的偏移量(左为负)<br/>
+     * removeNonVisibleChildren<br/>
+     * positionChildren<br/>
+     *  This tracks the starting layout position of the leftmost view */
     private int mDisplayOffset;
 
     /** Holds a reference to the adapter bound to this view */
@@ -140,14 +144,16 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** The x position of the currently rendered view */
     protected int mCurrentX;
 
-    /** The x position of the next to be rendered view */
+    /**
+     * 向右滑动距离的累加
+     *  The x position of the next to be rendered view */
     protected int mNextX;
 
     /**
      * 根据bundle中存储的BUNDLE_ID_CURRENT_X恢复xNextX的值
      *  Used to hold the scroll position to restore to post rotate 
      *  */
-    private Integer mRestoreX = null;
+    private Integer mStoredX = null;
 
     /** Tracks the maximum possible X position, stays at max value until last item is laid out and it can be determined */
     private int mMaxX = Integer.MAX_VALUE;
@@ -320,7 +326,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             Bundle bundle = (Bundle) state;
 
             // Restore our state from the bundle
-            mRestoreX = Integer.valueOf((bundle.getInt(BUNDLE_ID_CURRENT_X)));
+            mStoredX = Integer.valueOf((bundle.getInt(BUNDLE_ID_CURRENT_X)));
 
             // Restore out parent's state from the bundle
             super.onRestoreInstanceState(bundle.getParcelable(BUNDLE_ID_PARENT_STATE));
@@ -562,16 +568,16 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
         // If restoring from a rotation
         // 如果有已存储的X左边,则采用
-        if (mRestoreX != null) {
-            mNextX = mRestoreX;
-            mRestoreX = null;
+        if (mStoredX != null) {
+            mNextX = mStoredX;
+            mStoredX = null;
         }
 
         // If in a fling
         // 如果是滑动 使用Scroller设定mNextX
         if (mScroller.computeScrollOffset()) {
             // Compute the next position
-            mNextX = mScroller.getCurrX();
+            mNextX = mScroller.getCurrX();// TODO 这里的值是怎么算出来的
         }
 
         // Prevent scrolling past 0 so you can't scroll past the end of the list to the left
@@ -600,7 +606,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_IDLE);
         }
 
-        // Calculate our delta from the last time the view was drawn
+        // 向左滑为负 Calculate our delta from the last time the view was drawn
         int dx = mCurrentX - mNextX;
         removeNonVisibleChildren(dx);
         fillList(dx);
@@ -760,11 +766,12 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         View child = getLeftmostChild();
 
         // Loop removing the leftmost child, until that child is on the screen
-        // child的最右边加上偏移量 是否超过左侧边界
+        // child的最右边加上偏移量 是否超过左侧边界(向左滑dx为负)
         while (child != null && child.getRight() + dx <= 0) {
             // The child is being completely removed so remove its width from the display offset and its divider if it has one.
             // To remove add the size of the child and its divider (if it has one) to the offset.
             // You need to add since its being removed from the left side, i.e. shifting the offset to the right.
+        	//mDisplayOffset向左是负数,加上左侧被回收的Chile的宽度,消除了无效的偏移量
             mDisplayOffset += isLastItemInAdapter(mLeftViewAdapterIndex) ? child.getMeasuredWidth() : mDividerWidth + child.getMeasuredWidth();
 
             // Add the removed view to the cache
@@ -1100,10 +1107,12 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             return HorizontalListView.this.onFling(e1, e2, velocityX, velocityY);
         }
-
+        /**更新mNextX,刷新界面*/
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        	// TODO 向左滑是正(已测试),向下划是正负?
             // Lock the user into interacting just with this view
+        	Log.i("HListView", "DistanceX : " + distanceX);
             requestParentListViewToNotInterceptTouchEvents(true);
 
             setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_TOUCH_SCROLL);
@@ -1183,7 +1192,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             unpressTouchedChild();
             releaseEdgeGlow();
 
-            // 运行父视图的触摸拦截Allow the user to interact with parent views
+            // 允许父视图的触摸拦截Allow the user to interact with parent views
             requestParentListViewToNotInterceptTouchEvents(false);
         }
 
@@ -1235,7 +1244,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
-     * 确认数据不准,并调用数据不足的监听事件
+     * 确认数据不足,并调用数据不足的监听事件
      * Determines if we are low on data and if so will call to notify the listener, if there is one,
      * that we are running low on data.
      */
@@ -1318,9 +1327,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 更新滑动到头的动画效果
      * Updates the over scroll animation based on the scrolled offset.
-     *
-     * @param scrolledOffset The scroll offset
+     * 更新的基础上，滚动抵消了滚动动画。
+     * @param scrolledOffset 滑动距离的绝对值The scroll offset
      */
     private void updateOverscrollAnimation(final int scrolledOffset) {
         if (mEdgeGlowLeft == null || mEdgeGlowRight == null) return;
@@ -1331,9 +1341,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         // If not currently in a fling (Don't want to allow fling offset updates to cause over scroll animation)
         if (mScroller == null || mScroller.isFinished()) {
             // If currently scrolled off the left side of the list and the adapter is not empty
-            if (nextScrollPosition < 0) {
+            if (nextScrollPosition < 0) {//如果滑到了最左边,就显示发光效果
 
-                // Calculate the amount we have scrolled since last frame
+                //获取绝对值 Calculate the amount we have scrolled since last frame
                 int overscroll = Math.abs(scrolledOffset);
 
                 // Tell the edge glow to redraw itself at the new offset
@@ -1343,7 +1353,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
                 if (!mEdgeGlowRight.isFinished()) {
                     mEdgeGlowRight.onRelease();
                 }
-            } else if (nextScrollPosition > mMaxX) {
+            } else if (nextScrollPosition > mMaxX) {//如果滑到了最右边,就显示发光效果
                 // Scrolled off the right of the list
 
                 // Calculate the amount we have scrolled since last frame
@@ -1361,6 +1371,8 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
+     * 判断是否需要使用显示edeg
+     * 如果还有Child,就不显示edge<br/>
      * Checks if the edge glow should be used enabled.
      * The glow is not enabled unless there are more views than can fit on the screen at one time.
      */
@@ -1372,7 +1384,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     @TargetApi(11)
-    /** Wrapper class to protect access to API version 11 and above features */
+    /**
+     * 包装类保护访问API版本11及以上功能<br/>
+     *  Wrapper class to protect access to API version 11 and above features */
     private static final class HoneycombPlus {
         static {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
@@ -1380,7 +1394,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             }
         }
 
-        /** Sets the friction for the provided scroller */
+        /**
+         * 设置阻力<br/>
+         *  Sets the friction for the provided scroller */
         public static void setFriction(Scroller scroller, float friction) {
             if (scroller != null) {
                 scroller.setFriction(friction);
@@ -1389,7 +1405,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     @TargetApi(14)
-    /** Wrapper class to protect access to API version 14 and above features */
+    /**
+     * 判断是否是版本14以上,如果是就可以调用对应的api<br/>
+     *  Wrapper class to protect access to API version 14 and above features */
     private static final class IceCreamSandwichPlus {
         static {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
@@ -1397,7 +1415,9 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             }
         }
 
-        /** Gets the velocity for the provided scroller */
+        /**
+         * 获取速率<br/>
+         *  Gets the velocity for the provided scroller */
         public static float getCurrVelocity(Scroller scroller) {
             return scroller.getCurrVelocity();
         }
