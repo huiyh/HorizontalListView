@@ -99,7 +99,8 @@ public class HListView extends AdapterView<ListAdapter> implements OnGestureList
 
 
 	private int mHeightMeasureSpec;
-
+	/**最左边的child左边相应parent的X坐标*/
+	private int mDividerWidth;
 
 	private Integer mStoredX;
 	private Scroller mScroller = new Scroller(getContext());
@@ -236,11 +237,92 @@ public class HListView extends AdapterView<ListAdapter> implements OnGestureList
 		 */
 		int dx = mCurrentX - mNextX;
 		removeNoVisibleChileren(dx);
+		fillList(dx);
 	}
 	
-	private void removeNoVisibleChileren(int dx) {
+	private void fillList(int dx) {
+		int edge = 0;
+		View child = getRightmostsChild();
+		if(child != null){
+			edge = child.getRight();
+		}
+		fillListRight(edge,dx);
+		
+		edge = 0;
+		child = getLeftMostChild();
+		if(null != child){
+			edge = child.getLeft();
+		}
+		fillListLeft(edge, dx);
 		
 	}
+
+
+
+	private void fillListLeft(int leftEdge, int dx) {
+		while(leftEdge + dx - mDisplayOffset > 0 && mLeftAdapterIndex > 0){
+			--mLeftAdapterIndex;
+			View child = mAdatper.getView(mLeftAdapterIndex, getRecycledView(mLeftAdapterIndex), this);
+			addAndMensureChild(child, 0);
+			leftEdge -= mLeftAdapterIndex == 0 ? child.getMeasuredWidth() : child.getMeasuredWidth() + mDividerWidth;
+			mDisplayOffset -= leftEdge + dx == 0 ? child.getMeasuredWidth() : child.getMeasuredWidth() + mDividerWidth;
+		}
+	}
+	private void fillListRight(int rightEdge, int dx) {
+		while(rightEdge + dx + mDisplayOffset < getWidth() && mRightAdapterIndex + 1 < mAdatper.getCount()){
+			++mRightAdapterIndex;
+			if(mLeftAdapterIndex < 0){
+				mLeftAdapterIndex = mRightAdapterIndex;
+			}
+			View child = mAdatper.getView(mRightAdapterIndex, getRecycledView(mRightAdapterIndex), this);
+			addAndMensureChild(child, -1);
+			rightEdge += 
+		}
+	}
+
+
+
+	private void removeNoVisibleChileren(int dx) {
+		View child = getLeftMostChild();
+		while(null != child && child.getRight() + dx < 0){
+//			应用是 mDisplayOffset -= isLastItemInAdapter(mLeftAdapterIndex) ? -(child.getMeasuredWidth()) : -(child.getMeasuredWidth() + mDividerWidth);
+//			简写为如下
+			mDisplayOffset += isLastItemInAdapter(mLeftAdapterIndex) ? child.getMeasuredWidth() : child.getMeasuredWidth() + mDividerWidth;
+			recycleView(mLeftAdapterIndex, child);
+			removeViewInLayout(child);
+			mLeftAdapterIndex++;
+			child = getLeftMostChild();
+		}
+		
+		child = getRightmostsChild();
+		while(null != child && child.getLeft() -dx > Integer.MAX_VALUE){
+			recycleView(mRightAdapterIndex, child);
+			removeViewInLayout(child);
+			--mRightAdapterIndex;
+			child = getRightmostsChild();
+		}
+	}
+
+
+
+
+	private View getLeftMostChild() {
+		return null;
+	}
+	
+	private View getRightmostsChild() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private boolean isLastItemInAdapter(int mLeftAdapterIndex2) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+
+
+
 
 
 
@@ -309,7 +391,11 @@ public class HListView extends AdapterView<ListAdapter> implements OnGestureList
 		}
 		return null;
 	}
-	
+	/**
+	 * 
+	 * @param adapterIndex 根据该index从mAdapter中获取ItemType,用于放入对应的缓存
+	 * @param view 待回收的Item
+	 */
 	private void recycleView(int adapterIndex,View view){
 		int itemViewType = mAdatper.getItemViewType(adapterIndex);
 		if(isItemViewTypeValid(adapterIndex)){

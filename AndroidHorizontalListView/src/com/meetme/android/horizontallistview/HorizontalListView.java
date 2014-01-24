@@ -820,9 +820,17 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
             determineIfLowOnData();
         }
     }
-
+    /**
+     * 如果是向右滑动,并且不是最左边的Item,就添加Item,并更新mDisplayOffset
+     * @param leftEdge 
+     * @param dx
+     */
     private void fillListLeft(int leftEdge, final int dx) {
+    	// TODO 正常情况下,leftEdge应该等于mDividerWidth.这里填充的内容会被回收.
+    	//应该修改这里添加Item的策略和回收的策略,左右应各留一个不显示的View
+    	
         // Loop adding views to the left until the screen is filled
+    	Log.i(VIEW_LOG_TAG, "leftEdge: " + leftEdge + "mDisplayOffset: " + mDisplayOffset);
         while (leftEdge + dx - mDividerWidth > 0 && mLeftViewAdapterIndex >= 1) {
             mLeftViewAdapterIndex--;
             View child = mAdapter.getView(mLeftViewAdapterIndex, getRecycledView(mLeftViewAdapterIndex), this);
@@ -1112,7 +1120,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
         	// TODO 向左滑是正(已测试),向下划是正负?
             // Lock the user into interacting just with this view
-        	Log.i("HListView", "DistanceX : " + distanceX);
+        	Log.i(VIEW_LOG_TAG, "DistanceX : " + distanceX);
             requestParentListViewToNotInterceptTouchEvents(true);
 
             setCurrentScrollState(OnScrollStateChangedListener.ScrollState.SCROLL_STATE_TOUCH_SCROLL);
