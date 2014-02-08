@@ -826,7 +826,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
      * @param dx
      */
     private void fillListLeft(int leftEdge, final int dx) {
-    	// TODO 正常情况下,leftEdge应该等于mDividerWidth.这里填充的内容会被回收.
+    	//正常情况下,leftEdge应该等于mDividerWidth.这里填充的内容会被回收.
     	//应该修改这里添加Item的策略和回收的策略,左右应各留一个不显示的View
     	
         // Loop adding views to the left until the screen is filled
