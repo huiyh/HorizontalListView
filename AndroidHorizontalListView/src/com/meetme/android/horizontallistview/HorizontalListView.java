@@ -137,7 +137,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     /** The width of the divider that will be used between list items */
     private int mDividerWidth = 0;
 
-    /**用了绘制item间的Divider<br/>
+    /**用来绘制item间的Divider<br/>
      *  The drawable that will be used as the list divider */
     private Drawable mDivider = null;
 
@@ -975,19 +975,23 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /** 
-     * 没看懂
+     * 在所有显示元素的右侧绘制Driver,最左侧如果需要也绘制
      * Draws the dividers that go in between the horizontal list view items */
     private void drawDividers(Canvas canvas) {
         final int count = getChildCount();
 
         // Only modify the left and right in the loop, we set the top and bottom here since they are always the same
         final Rect boundsRect = mRect;
-        mRect.top = getPaddingTop();
-        mRect.bottom = mRect.top + getRenderHeight();
+        mRect.top = getPaddingTop();//顶部X轴坐标
+        mRect.bottom = mRect.top + getRenderHeight();//底部X轴坐标
         //得到的mRect是PaddingTop和PaddingBottom之间的部分.
+        
+        //遍历所有Child,绘制Divier
         // Draw the list dividers
         for (int i = 0; i < count; i++) {
             //最右侧元素的右侧不要画Divider
+        	//如果Child不是最后一个item/child,就在它的右侧绘制Divier.
+        	//矩形的左侧Y轴坐标  = child的右侧Y轴坐标,右侧Y轴坐标是左侧坐标加上Divider宽度
         	//Don't draw a divider to the right of the last item in the adapter
             if (!(i == count - 1 && isLastItemInAdapter(mRightViewAdapterIndex))) {
                 View child = getChildAt(i);
@@ -1009,7 +1013,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
 
                 // Draw a divider to the right of the child
                 drawDivider(canvas, boundsRect);
-
+                // 如果第一个Child左侧未超出范围,在它的左侧绘制Driver
                 // If the first view, determine if a divider should be shown to the left of it.
                 // A divider should be shown if the left side of this view does not fill to the left edge of the screen.
                 if (i == 0 && child.getLeft() > getPaddingLeft()) {
@@ -1022,7 +1026,8 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
     }
 
     /**
-     * 关键给定的矩形,绘制Divider
+     * 根据给定的矩形,绘制Divider<br/>
+     * 调用Drawable.setBounds()和Drawable.draw()方法
      * Draws a divider in the given bounds.
      *
      * @param canvas The canvas to draw to.
@@ -1040,7 +1045,10 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         super.onDraw(canvas);
         drawDividers(canvas);
     }
-
+    /**
+     * 被draw()调用,用了绘制Child<br/>
+     * {@inheritDoc}
+     */
     @Override
     protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
@@ -1391,7 +1399,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         return mMaxX > 0;
     }
 
-    @TargetApi(11)
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     /**
      * 包装类保护访问API版本11及以上功能<br/>
      *  Wrapper class to protect access to API version 11 and above features */
@@ -1412,7 +1420,7 @@ public class HorizontalListView extends AdapterView<ListAdapter> {
         }
     }
 
-    @TargetApi(14)
+    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     /**
      * 判断是否是版本14以上,如果是就可以调用对应的api<br/>
      *  Wrapper class to protect access to API version 14 and above features */
