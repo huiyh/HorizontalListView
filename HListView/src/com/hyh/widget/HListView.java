@@ -276,8 +276,34 @@ public class HListView extends AdapterView<ListAdapter> implements OnGestureList
 			}
 			View child = mAdatper.getView(mRightAdapterIndex, getRecycledView(mRightAdapterIndex), this);
 			addAndMensureChild(child, -1);
-			rightEdge += 
+			rightEdge += (mRightAdapterIndex == 0 ? 0 : mDividerWidth)+child.getMeasuredWidth();
+			determineIfLowOnData();
 		}
+	}
+
+	private void postitonChildren(final int dx){
+		final int childCount = getChildCount();
+		if(childCount > 0){
+			mDisplayOffset += dx;
+			int leftOffset = mDisplayOffset;
+			for(int i = 0; i < childCount; i++){
+				View child = getChildAt(i);
+				int left = leftOffset + getPaddingLeft();
+				int top = getPaddingTop();
+				int right = left + child.getMeasuredWidth();
+				int botton = top + child.getMeasuredHeight();
+				
+				child.layout(left, top, right, botton);
+				
+				leftOffset += child.getMeasuredWidth() + mDividerWidth;
+			}
+		}
+		
+	}
+
+	private void determineIfLowOnData() {
+		// TODO Auto-generated method stub
+		
 	}
 
 
@@ -307,14 +333,19 @@ public class HListView extends AdapterView<ListAdapter> implements OnGestureList
 
 
 	private View getLeftMostChild() {
-		return null;
+		return getChildAt(0);
 	}
 	
 	private View getRightmostsChild() {
-		// TODO Auto-generated method stub
-		return null;
+		return getChildAt(getChildCount() - 1);
 	}
 
+	private View getChild(int adapterIndex){
+		if(adapterIndex >= mLeftAdapterIndex && adapterIndex <= mRightAdapterIndex){
+			return getChildAt(adapterIndex - mLeftAdapterIndex);
+		}
+		return null;
+	}
 	private boolean isLastItemInAdapter(int mLeftAdapterIndex2) {
 		// TODO Auto-generated method stub
 		return false;
